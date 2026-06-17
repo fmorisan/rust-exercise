@@ -45,6 +45,10 @@ impl AccountState {
         self.accounts.get(&client)
     }
 
+    pub fn get_transaction(&self, id: u32) -> Option<&Transaction> {
+        self.ledger.get(&id)
+    }
+
     fn get_or_insert_account(&mut self, client: u16) -> &mut Account {
         self.accounts.entry(client).or_insert(Account::default())
     }

@@ -23,6 +23,10 @@ impl Account {
         self.total.checked_sub(self.held).unwrap()
     }
 
+    pub fn locked(&self) -> bool {
+        self.locked
+    }
+
     pub fn credit_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)

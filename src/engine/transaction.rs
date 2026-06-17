@@ -34,6 +34,10 @@ impl Transaction {
         &self.tx
     }
 
+    pub fn state(&self) -> &TransactionState {
+        &self.state
+    }
+
     fn valid_state_transition(&self, new_state: TransactionState) -> bool {
         matches!(
             (&self.state, new_state),
