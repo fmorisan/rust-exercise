@@ -10,6 +10,7 @@ pub struct Account {
     locked: bool,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum AccountOperationError {
     AccountLocked,
     BalanceInsufficient,
