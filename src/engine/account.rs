@@ -48,7 +48,7 @@ impl Account {
         } else if amount.gt(&self.available()) {
             Err(AccountOperationError::BalanceInsufficient)
         } else {
-            self.held = self.held.checked_sub(amount).unwrap();
+            self.held = self.held.checked_add(amount).unwrap();
             Ok(())
         }
     }
