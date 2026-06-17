@@ -2,7 +2,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize};
 
 #[derive(Debug)]
-pub enum Transaction {
+pub enum ParsedTransaction {
     Deposit {
         client: u16,
         id: u32,
@@ -49,7 +49,7 @@ pub struct TransactionRow {
 
 pub struct ParseError;
 
-impl TryFrom<TransactionRow> for Transaction {
+impl TryFrom<TransactionRow> for ParsedTransaction {
     type Error = ParseError;
 
     fn try_from(value: TransactionRow) -> Result<Self, Self::Error> {
