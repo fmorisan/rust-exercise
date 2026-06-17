@@ -353,14 +353,29 @@ mod test {
         assert_eq!(account.held, Decimal::from(50));
         assert_eq!(account.available(), Decimal::from(20));
 
-        account.debit_amount(&Decimal::from(50)).unwrap();
-        assert_eq!(account.total, Decimal::from(20));
-        assert_eq!(account.held, Decimal::ZERO);
-        assert_eq!(account.available(), Decimal::from(20));
+        account.debit_amount(&Decimal::from(20)).unwrap();
+        assert_eq!(account.total, Decimal::from(50));
+        assert_eq!(account.held, Decimal::from(50));
+        assert_eq!(account.available(), Decimal::from(0));
 
-        account.locked = true;
+        let res = account.lock();
+        assert!(res.is_ok());
+        assert!(account.locked);
+
         assert_eq!(
             account.credit_amount(&Decimal::from(10)),
+            Err(AccountOperationError::AccountLocked)
+        );
+        assert_eq!(
+            account.debit_amount(&Decimal::from(10)),
+            Err(AccountOperationError::AccountLocked)
+        );
+        assert_eq!(
+            account.hold_amount(&Decimal::from(10)),
+            Err(AccountOperationError::AccountLocked)
+        );
+        assert_eq!(
+            account.release_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         );
     }
@@ -390,5 +405,18 @@ mod test {
         ));
         assert_eq!(account.total, Decimal::from(100));
         assert_eq!(account.held, Decimal::from(20));
+    }
+
+    #[test]
+    fn account_cannot_be_locked_twice() {
+        let mut account = default_account();
+
+        let res = account.lock();
+        assert!(res.is_ok());
+
+        assert!(matches!(
+            account.lock(),
+            Err(AccountOperationError::AccountLocked)
+        ));
     }
 }

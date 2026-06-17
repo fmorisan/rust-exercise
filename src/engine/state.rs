@@ -135,6 +135,8 @@ impl AccountState {
 mod test {
     use rust_decimal::Decimal;
 
+use crate::engine::transaction::TransactionState;
+
 use super::*;
 
     #[test]
@@ -164,25 +166,122 @@ use super::*;
         let result = state.apply_transaction(deposit_tx.into());
         assert!(result.is_ok());
 
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
         let result = state.apply_transaction(withdraw_tx.into());
         assert!(result.is_ok());
 
-        let account = state.get_account(1).unwrap();
-        assert_eq!(account.available(), Decimal::from(10));
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(0));
     }
 
     #[test]
     fn process_dispute() {
-        assert!(false);
+        let deposit_tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let dispute_tx = ParsedTransaction::Dispute { client: 1, id: 1 };
+
+        let mut state = AccountState::new();
+
+        let _ = state.apply_transaction(deposit_tx.into());
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
+        assert!(matches!(
+            state.apply_transaction(dispute_tx.into()),
+            Ok(_)
+        ));
+
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::ZERO);
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::Disputed
+        ));
     }
 
     #[test]
     fn process_resolve() {
-        assert!(false);
+        let deposit_tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let dispute_tx = ParsedTransaction::Dispute { client: 1, id: 1 };
+        let resolve_tx = ParsedTransaction::Resolve { client: 1, id: 1 };
+
+        let mut state = AccountState::new();
+
+        let _ = state.apply_transaction(deposit_tx.into());
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
+        assert!(matches!(
+            state.apply_transaction(dispute_tx.into()),
+            Ok(_)
+        ));
+
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::ZERO);
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::Disputed
+        ));
+
+        assert!(matches!(
+            state.apply_transaction(resolve_tx.into()),
+            Ok(_)
+        ));
+
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::Normal
+        ));
     }
 
     #[test]
     fn process_chargeback() {
-        assert!(false);
+        let deposit_tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let dispute_tx = ParsedTransaction::Dispute { client: 1, id: 1 };
+        let chargeback_tx = ParsedTransaction::Chargeback { client: 1, id: 1 };
+
+        let mut state = AccountState::new();
+
+        let _ = state.apply_transaction(deposit_tx.into());
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
+        assert!(matches!(
+            state.apply_transaction(dispute_tx.into()),
+            Ok(_)
+        ));
+
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::ZERO);
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::Disputed
+        ));
+
+        assert!(matches!(
+            state.apply_transaction(chargeback_tx.into()),
+            Ok(_)
+        ));
+
+        let account = state.get_account(1).unwrap();
+        assert_eq!(account.available(), Decimal::ZERO);
+        assert!(account.locked());
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::ChargedBack
+        ));
     }
 }
