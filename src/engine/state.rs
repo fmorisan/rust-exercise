@@ -129,10 +129,56 @@ impl AccountState {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use rust_decimal::Decimal;
+
+use super::*;
 
     #[test]
     fn it_works() {
         assert!(true);
+    }
+
+    #[test]
+    fn process_deposit() {
+        let tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let mut state = AccountState::new();
+
+        let result = state.apply_transaction(tx.into());
+        assert!(result.is_ok());
+
+        let account = state.get_account(1).unwrap();
+        assert_eq!(account.available(), Decimal::from(10));
+    }
+
+    #[test]
+    fn process_withdrawal() {
+        let deposit_tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let withdraw_tx = ParsedTransaction::Withdrawal { client: 1, id: 2, amount: Decimal::from(10) };
+
+        let mut state = AccountState::new();
+
+        let result = state.apply_transaction(deposit_tx.into());
+        assert!(result.is_ok());
+
+        let result = state.apply_transaction(withdraw_tx.into());
+        assert!(result.is_ok());
+
+        let account = state.get_account(1).unwrap();
+        assert_eq!(account.available(), Decimal::from(10));
+    }
+
+    #[test]
+    fn process_dispute() {
+        assert!(false);
+    }
+
+    #[test]
+    fn process_resolve() {
+        assert!(false);
+    }
+
+    #[test]
+    fn process_chargeback() {
+        assert!(false);
     }
 }
