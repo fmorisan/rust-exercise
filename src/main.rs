@@ -1,13 +1,22 @@
 mod format;
 mod engine;
 
+use std::{path::PathBuf};
+use clap::Parser;
+
 use crate::{
     engine::{state::AccountState, transaction::Transaction},
     format::transaction::{ParsedTransaction, TransactionRow}
 };
 
+#[derive(Parser)]
+struct Args {
+    path: PathBuf
+}
+
 fn main() {
-    let mut reader = csv::Reader::from_path("test.csv").unwrap();
+    let args = Args::parse();
+    let mut reader = csv::Reader::from_path(args.path).unwrap();
     let transactions: Vec<Transaction> = reader.deserialize::<TransactionRow>()
         .filter_map(|tx| tx.ok())
         .filter_map(|row| TryInto::<ParsedTransaction>::try_into(row).ok())
