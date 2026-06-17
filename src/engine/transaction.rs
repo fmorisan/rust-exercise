@@ -42,4 +42,131 @@ impl Transaction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::format::transaction::ParsedTransaction;
+    use rust_decimal::Decimal;
+
+    fn make_deposit_tx(client: u16, id: u32, amount: Decimal) -> Transaction {
+        Transaction::from(ParsedTransaction::Deposit { client, id, amount })
+    }
+
+    fn make_withdrawal_tx(client: u16, id: u32, amount: Decimal) -> Transaction {
+        Transaction::from(ParsedTransaction::Withdrawal { client, id, amount })
+    }
+
+    // --- From<ParsedTransaction> ---
+
+    #[test]
+    fn new_transaction_starts_in_normal_state() {
+        let tx = make_deposit_tx(1, 1, Decimal::from(100));
+        assert!(matches!(tx.state, TransactionState::Normal));
+    }
+
+    #[test]
+    fn withdrawal_transaction_starts_in_normal_state() {
+        let tx = make_withdrawal_tx(2, 5, Decimal::from(50));
+        assert!(matches!(tx.state, TransactionState::Normal));
+    }
+
+    // --- valid_state_transition: Normal -> * ---
+
+    #[test]
+    fn normal_to_disputed_is_valid() {
+        let tx = make_deposit_tx(1, 1, Decimal::ONE);
+        assert!(tx.valid_state_transition(TransactionState::Disputed));
+    }
+
+    #[test]
+    fn normal_to_normal_is_invalid() {
+        let tx = make_deposit_tx(1, 1, Decimal::ONE);
+        assert!(!tx.valid_state_transition(TransactionState::Normal));
+    }
+
+    #[test]
+    fn normal_to_charged_back_is_invalid() {
+        let tx = make_deposit_tx(1, 1, Decimal::ONE);
+        assert!(!tx.valid_state_transition(TransactionState::ChargedBack));
+    }
+
+    // --- valid_state_transition: Disputed -> * ---
+
+    #[test]
+    fn disputed_to_normal_is_valid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::Disputed;
+        assert!(tx.valid_state_transition(TransactionState::Normal));
+    }
+
+    #[test]
+    fn disputed_to_charged_back_is_valid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::Disputed;
+        assert!(tx.valid_state_transition(TransactionState::ChargedBack));
+    }
+
+    #[test]
+    fn disputed_to_disputed_is_invalid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::Disputed;
+        assert!(!tx.valid_state_transition(TransactionState::Disputed));
+    }
+
+    // --- valid_state_transition: ChargedBack -> * ---
+
+    #[test]
+    fn charged_back_to_normal_is_invalid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::ChargedBack;
+        assert!(!tx.valid_state_transition(TransactionState::Normal));
+    }
+
+    #[test]
+    fn charged_back_to_disputed_is_invalid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::ChargedBack;
+        assert!(!tx.valid_state_transition(TransactionState::Disputed));
+    }
+
+    #[test]
+    fn charged_back_to_charged_back_is_invalid() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::ONE);
+        tx.state = TransactionState::ChargedBack;
+        assert!(!tx.valid_state_transition(TransactionState::ChargedBack));
+    }
+
+    // --- state machine lifecycle ---
+
+    #[test]
+    fn full_dispute_resolve_cycle() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::from(100));
+        assert!(matches!(tx.state, TransactionState::Normal));
+
+        let ok = tx.valid_state_transition(TransactionState::Disputed);
+        assert!(ok);
+        tx.state = TransactionState::Disputed;
+
+        let ok = tx.valid_state_transition(TransactionState::Normal);
+        assert!(ok);
+        tx.state = TransactionState::Normal;
+    }
+
+    #[test]
+    fn full_dispute_chargeback_cycle() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::from(100));
+        assert!(matches!(tx.state, TransactionState::Normal));
+
+        let ok = tx.valid_state_transition(TransactionState::Disputed);
+        assert!(ok);
+        tx.state = TransactionState::Disputed;
+
+        let ok = tx.valid_state_transition(TransactionState::ChargedBack);
+        assert!(ok);
+        tx.state = TransactionState::ChargedBack;
+    }
+
+    #[test]
+    fn cannot_dispute_after_chargeback() {
+        let mut tx = make_deposit_tx(1, 1, Decimal::from(100));
+        tx.state = TransactionState::ChargedBack;
+        assert!(!tx.valid_state_transition(TransactionState::Disputed));
+    }
 }
