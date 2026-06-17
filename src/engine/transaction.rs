@@ -26,7 +26,14 @@ impl From<ParsedTransaction> for Transaction {
     }
 }
 
+#[derive(Debug)]
+pub struct TransactionStateInvalid;
+
 impl Transaction {
+    pub fn transaction(&self) -> &ParsedTransaction {
+        &self.tx
+    }
+
     fn valid_state_transition(&self, new_state: TransactionState) -> bool {
         matches!(
             (&self.state, new_state),
@@ -36,6 +43,33 @@ impl Transaction {
             | (TransactionState::Disputed, TransactionState::Normal | TransactionState::ChargedBack)
             // Charged back transactions are not disputable again.
         )
+    }
+
+    pub fn dispute(&mut self) -> Result<(), TransactionStateInvalid> {
+        if self.valid_state_transition(TransactionState::Disputed) {
+            self.state = TransactionState::Disputed;
+            Ok(())
+        } else {
+            Err(TransactionStateInvalid)
+        }
+    }
+
+    pub fn resolve(&mut self) -> Result<(), TransactionStateInvalid> {
+        if self.valid_state_transition(TransactionState::Normal) {
+            self.state = TransactionState::Normal;
+            Ok(())
+        } else {
+            Err(TransactionStateInvalid)
+        }
+    }
+
+    pub fn chargeback(&mut self) -> Result<(), TransactionStateInvalid> {
+        if self.valid_state_transition(TransactionState::ChargedBack) {
+            self.state = TransactionState::ChargedBack;
+            Ok(())
+        } else {
+            Err(TransactionStateInvalid)
+        }
     }
 }
 
@@ -146,7 +180,6 @@ mod test {
 
         let ok = tx.valid_state_transition(TransactionState::Normal);
         assert!(ok);
-        tx.state = TransactionState::Normal;
     }
 
     #[test]
@@ -160,7 +193,6 @@ mod test {
 
         let ok = tx.valid_state_transition(TransactionState::ChargedBack);
         assert!(ok);
-        tx.state = TransactionState::ChargedBack;
     }
 
     #[test]
