@@ -23,44 +23,53 @@ impl Account {
         self.total.checked_sub(self.held).unwrap()
     }
 
-    pub fn credit_amount(&mut self, amount: Decimal) -> Result<(), AccountOperationError> {
+    pub fn credit_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
         } else {
-            self.total = self.total.checked_add(amount).unwrap();
+            self.total = self.total.checked_add(*amount).unwrap();
             Ok(())
         }
     }
 
-    pub fn debit_amount(&mut self, amount: Decimal) -> Result<(), AccountOperationError> {
+    pub fn debit_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
         } else if amount.gt(&self.available()) {
             Err(AccountOperationError::BalanceInsufficient)
         } else {
-            self.total = self.total.checked_sub(amount).unwrap();
+            self.total = self.total.checked_sub(*amount).unwrap();
             Ok(())
         }
     }
     
-    pub fn hold_amount(&mut self, amount: Decimal) -> Result<(), AccountOperationError> {
+    pub fn hold_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
         } else if amount.gt(&self.available()) {
             Err(AccountOperationError::BalanceInsufficient)
         } else {
-            self.held = self.held.checked_add(amount).unwrap();
+            self.held = self.held.checked_add(*amount).unwrap();
             Ok(())
         }
     }
 
-    pub fn release_amount(&mut self, amount: Decimal) -> Result<(), AccountOperationError> {
+    pub fn release_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
         } else if amount.gt(&self.held) {
             Err(AccountOperationError::BalanceInsufficient)
         } else {
-            self.held = self.held.checked_sub(amount).unwrap();
+            self.held = self.held.checked_sub(*amount).unwrap();
+            Ok(())
+        }
+    }
+
+    pub fn lock(&mut self) -> Result<(), AccountOperationError>{
+        if self.locked {
+            Err(AccountOperationError::AccountLocked)
+        } else {
+            self.locked = true;
             Ok(())
         }
     }
@@ -95,7 +104,7 @@ mod test {
     #[test]
     fn credit_increases_total() {
         let mut account = default_account();
-        account.credit_amount(Decimal::from(100)).unwrap();
+        account.credit_amount(&Decimal::from(100)).unwrap();
         assert_eq!(account.total, Decimal::from(100));
         assert_eq!(account.available(), Decimal::from(100));
         assert_eq!(account.held, Decimal::ZERO);
@@ -106,7 +115,7 @@ mod test {
         let mut account = default_account();
         account.locked = true;
         assert_eq!(
-            account.credit_amount(Decimal::from(100)),
+            account.credit_amount(&Decimal::from(100)),
             Err(AccountOperationError::AccountLocked)
         );
         assert_eq!(account.total, Decimal::ZERO);
@@ -115,9 +124,9 @@ mod test {
     #[test]
     fn credit_accumulates_multiple_deposits() {
         let mut account = default_account();
-        account.credit_amount(Decimal::from(50)).unwrap();
-        account.credit_amount(Decimal::from(30)).unwrap();
-        account.credit_amount(Decimal::from(20)).unwrap();
+        account.credit_amount(&Decimal::from(50)).unwrap();
+        account.credit_amount(&Decimal::from(30)).unwrap();
+        account.credit_amount(&Decimal::from(20)).unwrap();
         assert_eq!(account.total, Decimal::from(100));
     }
 
@@ -127,7 +136,7 @@ mod test {
     fn debit_decreases_total() {
         let mut account = default_account();
         account.total = Decimal::from(100);
-        account.debit_amount(Decimal::from(30)).unwrap();
+        account.debit_amount(&Decimal::from(30)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.available(), Decimal::from(70));
     }
@@ -137,7 +146,7 @@ mod test {
         let mut account = default_account();
         account.total = Decimal::from(50);
         assert_eq!(
-            account.debit_amount(Decimal::from(100)),
+            account.debit_amount(&Decimal::from(100)),
             Err(AccountOperationError::BalanceInsufficient)
         );
         assert_eq!(account.total, Decimal::from(50));
@@ -147,7 +156,7 @@ mod test {
     fn debit_exact_available_succeeds() {
         let mut account = default_account();
         account.total = Decimal::from(100);
-        account.debit_amount(Decimal::from(100)).unwrap();
+        account.debit_amount(&Decimal::from(100)).unwrap();
         assert_eq!(account.total, Decimal::ZERO);
         assert_eq!(account.available(), Decimal::ZERO);
     }
@@ -158,7 +167,7 @@ mod test {
         account.total = Decimal::from(100);
         account.locked = true;
         assert_eq!(
-            account.debit_amount(Decimal::from(30)),
+            account.debit_amount(&Decimal::from(30)),
             Err(AccountOperationError::AccountLocked)
         );
         assert_eq!(account.total, Decimal::from(100));
@@ -171,10 +180,10 @@ mod test {
         account.held = Decimal::from(40);
         assert_eq!(account.available(), Decimal::from(60));
         assert_eq!(
-            account.debit_amount(Decimal::from(70)),
+            account.debit_amount(&Decimal::from(70)),
             Err(AccountOperationError::BalanceInsufficient)
         );
-        account.debit_amount(Decimal::from(60)).unwrap();
+        account.debit_amount(&Decimal::from(60)).unwrap();
         assert_eq!(account.total, Decimal::from(40));
         assert_eq!(account.held, Decimal::from(40));
         assert_eq!(account.available(), Decimal::ZERO);
@@ -188,7 +197,7 @@ mod test {
         );
         let mut account = default_account();
         assert_eq!(
-            account.debit_amount(Decimal::ONE),
+            account.debit_amount(&Decimal::ONE),
             Err(AccountOperationError::BalanceInsufficient)
         );
     }
@@ -199,7 +208,7 @@ mod test {
     fn hold_increases_held_total_unchanged() {
         let mut account = default_account();
         account.total = Decimal::from(100);
-        account.hold_amount(Decimal::from(30)).unwrap();
+        account.hold_amount(&Decimal::from(30)).unwrap();
         assert_eq!(account.held, Decimal::from(30));
         assert_eq!(account.available(), Decimal::from(70));
         assert_eq!(account.total, Decimal::from(100));
@@ -212,7 +221,7 @@ mod test {
         account.held = Decimal::from(30);
         assert_eq!(account.available(), Decimal::from(20));
         assert_eq!(
-            account.hold_amount(Decimal::from(25)),
+            account.hold_amount(&Decimal::from(25)),
             Err(AccountOperationError::BalanceInsufficient)
         );
         assert_eq!(account.held, Decimal::from(30));
@@ -224,7 +233,7 @@ mod test {
         account.total = Decimal::from(100);
         account.locked = true;
         assert_eq!(
-            account.hold_amount(Decimal::from(30)),
+            account.hold_amount(&Decimal::from(30)),
             Err(AccountOperationError::AccountLocked)
         );
         assert_eq!(account.held, Decimal::ZERO);
@@ -234,8 +243,8 @@ mod test {
     fn hold_accumulates_across_multiple_holds() {
         let mut account = default_account();
         account.total = Decimal::from(100);
-        account.hold_amount(Decimal::from(20)).unwrap();
-        account.hold_amount(Decimal::from(30)).unwrap();
+        account.hold_amount(&Decimal::from(20)).unwrap();
+        account.hold_amount(&Decimal::from(30)).unwrap();
         assert_eq!(account.held, Decimal::from(50));
         assert_eq!(account.available(), Decimal::from(50));
         assert_eq!(account.total, Decimal::from(100));
@@ -248,7 +257,7 @@ mod test {
         let mut account = default_account();
         account.total = Decimal::from(100);
         account.held = Decimal::from(30);
-        account.release_amount(Decimal::from(10)).unwrap();
+        account.release_amount(&Decimal::from(10)).unwrap();
         assert_eq!(account.held, Decimal::from(20));
         assert_eq!(account.available(), Decimal::from(80));
         assert_eq!(account.total, Decimal::from(100));
@@ -260,7 +269,7 @@ mod test {
         account.total = Decimal::from(100);
         account.held = Decimal::from(20);
         assert_eq!(
-            account.release_amount(Decimal::from(30)),
+            account.release_amount(&Decimal::from(30)),
             Err(AccountOperationError::BalanceInsufficient)
         );
         assert_eq!(account.held, Decimal::from(20));
@@ -273,7 +282,7 @@ mod test {
         account.held = Decimal::from(30);
         account.locked = true;
         assert_eq!(
-            account.release_amount(Decimal::from(10)),
+            account.release_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         );
         assert_eq!(account.held, Decimal::from(30));
@@ -284,7 +293,7 @@ mod test {
         let mut account = default_account();
         account.total = Decimal::from(100);
         account.held = Decimal::from(100);
-        account.release_amount(Decimal::from(100)).unwrap();
+        account.release_amount(&Decimal::from(100)).unwrap();
         assert_eq!(account.held, Decimal::ZERO);
         assert_eq!(account.available(), Decimal::from(100));
     }
@@ -294,7 +303,7 @@ mod test {
         let mut account = default_account();
         account.total = Decimal::from(100);
         assert_eq!(
-            account.release_amount(Decimal::ONE),
+            account.release_amount(&Decimal::ONE),
             Err(AccountOperationError::BalanceInsufficient)
         );
         assert_eq!(account.held, Decimal::ZERO);
@@ -306,21 +315,21 @@ mod test {
     fn deposit_withdrawal_dispute_resolve_lifecycle() {
         let mut account = default_account();
 
-        account.credit_amount(Decimal::from(100)).unwrap();
+        account.credit_amount(&Decimal::from(100)).unwrap();
         assert_eq!(account.total, Decimal::from(100));
         assert_eq!(account.available(), Decimal::from(100));
         assert_eq!(account.held, Decimal::ZERO);
 
-        account.debit_amount(Decimal::from(30)).unwrap();
+        account.debit_amount(&Decimal::from(30)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.available(), Decimal::from(70));
 
-        account.hold_amount(Decimal::from(50)).unwrap();
+        account.hold_amount(&Decimal::from(50)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.held, Decimal::from(50));
         assert_eq!(account.available(), Decimal::from(20));
 
-        account.release_amount(Decimal::from(50)).unwrap();
+        account.release_amount(&Decimal::from(50)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.held, Decimal::ZERO);
         assert_eq!(account.available(), Decimal::from(70));
@@ -330,24 +339,24 @@ mod test {
     fn deposit_withdrawal_dispute_chargeback_lifecycle() {
         let mut account = default_account();
 
-        account.credit_amount(Decimal::from(100)).unwrap();
-        account.debit_amount(Decimal::from(30)).unwrap();
+        account.credit_amount(&Decimal::from(100)).unwrap();
+        account.debit_amount(&Decimal::from(30)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.available(), Decimal::from(70));
 
-        account.hold_amount(Decimal::from(50)).unwrap();
+        account.hold_amount(&Decimal::from(50)).unwrap();
         assert_eq!(account.total, Decimal::from(70));
         assert_eq!(account.held, Decimal::from(50));
         assert_eq!(account.available(), Decimal::from(20));
 
-        account.debit_amount(Decimal::from(50)).unwrap();
+        account.debit_amount(&Decimal::from(50)).unwrap();
         assert_eq!(account.total, Decimal::from(20));
         assert_eq!(account.held, Decimal::ZERO);
         assert_eq!(account.available(), Decimal::from(20));
 
         account.locked = true;
         assert_eq!(
-            account.credit_amount(Decimal::from(10)),
+            account.credit_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         );
     }
@@ -360,19 +369,19 @@ mod test {
         account.locked = true;
 
         assert!(matches!(
-            account.credit_amount(Decimal::from(10)),
+            account.credit_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         ));
         assert!(matches!(
-            account.debit_amount(Decimal::from(10)),
+            account.debit_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         ));
         assert!(matches!(
-            account.hold_amount(Decimal::from(10)),
+            account.hold_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         ));
         assert!(matches!(
-            account.release_amount(Decimal::from(10)),
+            account.release_amount(&Decimal::from(10)),
             Err(AccountOperationError::AccountLocked)
         ));
         assert_eq!(account.total, Decimal::from(100));
