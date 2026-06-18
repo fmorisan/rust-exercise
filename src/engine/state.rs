@@ -17,8 +17,10 @@ pub enum TransactionOperationError {
     DuplicateTransaction,
     InvalidTransaction,
     InvalidDispute,
-    InvalidChargeback,
+    /// The transaction state change has failed
     TransactionError(TransactionStateInvalid),
+    /// An error has ocurred during account state transition
+    #[allow(dead_code)]
     AccountError(AccountOperationError)
 }
 

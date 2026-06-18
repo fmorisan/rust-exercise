@@ -34,6 +34,8 @@ impl Account {
         self.locked
     }
 
+    /// Credit an amount of money to the account.
+    /// Cannot be called on locked accounts.
     pub fn credit_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
@@ -43,6 +45,8 @@ impl Account {
         }
     }
 
+    /// Debit an amount from an account
+    /// Fails on a locked account, or unavailable funds.
     pub fn debit_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
@@ -54,10 +58,14 @@ impl Account {
         }
     }
     
+    /// Stakes a hold on an account's funds (used when a transaction is disputed)
+    /// Fails on locked accounts.
     pub fn hold_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
         } else if amount.gt(&self.available()) {
+            // TODO: change this behaviour. what if 1.deposit(100), 2.withdraw(20), then
+            // dispute(1)?
             Err(AccountOperationError::BalanceInsufficient)
         } else {
             self.held = self.held.checked_add(*amount).unwrap();
@@ -65,6 +73,8 @@ impl Account {
         }
     }
 
+    /// Release a held amount (dispute was resolved)
+    /// Fails on locked accounts. `amount` must be <= `account.held`.
     pub fn release_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
@@ -76,6 +86,7 @@ impl Account {
         }
     }
 
+    /// Locks an account for having charged back a transaction.
     pub fn lock(&mut self) -> Result<(), AccountOperationError>{
         if self.locked {
             Err(AccountOperationError::AccountLocked)

@@ -41,9 +41,12 @@ enum TransactionKind {
 pub struct TransactionRow {
     #[serde(rename = "type")]
     kind: TransactionKind,
+    /// Client associated with this transaction
     client: u16,
+    /// Transaction amount
     amount: Option<Decimal>,
     #[serde(rename = "tx")]
+    /// Transaction identifier. Not sequential
     id: u32
 }
 
