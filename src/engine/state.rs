@@ -133,8 +133,7 @@ impl AccountState {
                                 disputed.chargeback()?;
                                 let account = self.accounts.get_mut(client).unwrap();
                                 account.release_amount(&amt)?;
-                                account.debit_amount(&amt)?;
-                                account.lock()?;
+                                account.debit_chargeback(&amt)?;
                             }
                         },
                         _ => {
@@ -152,6 +151,7 @@ impl AccountState {
 #[cfg(test)]
 mod test {
     use rust_decimal::Decimal;
+    use std::assert_matches;
 
     use crate::engine::transaction::TransactionState;
 
@@ -917,5 +917,55 @@ mod test {
             tx.state(),
             TransactionState::ChargedBack
         ));
+    }
+
+    #[test]
+    fn chargeback_after_withdraw_results_in_negative_balance() {
+        let deposit_tx = ParsedTransaction::Deposit { client: 1, id: 1, amount: Decimal::from(10) };
+        let withdraw_tx = ParsedTransaction::Withdrawal { client: 1, id: 2, amount: Decimal::from(10) };
+        let dispute_tx = ParsedTransaction::Dispute { client: 1, id: 1 };
+        let chargeback_tx = ParsedTransaction::Chargeback { client: 1, id: 1 };
+
+        let mut state = AccountState::new();
+
+        let _ = state.apply_transaction(deposit_tx.into());
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::from(10));
+
+        assert!(matches!(
+            state.apply_transaction(withdraw_tx.into()),
+            Ok(_)
+        ));
+
+        let available = state.get_account(1).unwrap().available();
+        assert_eq!(available, Decimal::ZERO);
+
+        assert_matches!(
+            state.apply_transaction(dispute_tx.into()),
+            Ok(_)
+        );
+
+        let tx = state.get_transaction(1).unwrap();
+        assert!(matches!(
+            tx.state(),
+            TransactionState::Disputed
+        ));
+
+        assert_matches!(
+            state.apply_transaction(chargeback_tx.into()),
+            Ok(_)
+        );
+
+        let account = state.get_account(1).unwrap();
+        assert_eq!(account.available(), Decimal::ZERO);
+        assert!(account.locked());
+        assert_eq!(account.held(), Decimal::from(0));
+        assert_eq!(account.total(), Decimal::from(-10));
+
+        let tx = state.get_transaction(1).unwrap();
+        assert_matches!(
+            tx.state(),
+            TransactionState::ChargedBack
+        );
     }
 }

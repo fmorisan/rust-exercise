@@ -57,6 +57,14 @@ impl Account {
             Ok(())
         }
     }
+
+    /// Debit an amount and lock an account during a chargeback
+    /// Fails on a locked account. MAY cause `total` to go negative.
+    pub fn debit_chargeback(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
+        self.lock()?;
+        self.total = self.total.checked_sub(*amount).unwrap();
+        Ok(())
+    }
     
     /// Stakes a hold on an account's funds (used when a transaction is disputed)
     /// Fails on locked accounts.
@@ -434,5 +442,33 @@ mod test {
             account.lock(),
             Err(AccountOperationError::AccountLocked)
         ));
+    }
+
+    #[test]
+    fn chargeback_after_withdraw_results_in_negative_balance() {
+        let mut account = default_account();
+
+        assert!(matches!(
+            account.credit_amount(&Decimal::from(10)),
+            Ok(_)
+        ));
+        assert!(matches!(
+            account.debit_amount(&Decimal::from(10)),
+            Ok(_)
+        ));
+        assert!(matches!(
+            account.hold_amount(&Decimal::from(10)),
+            Ok(_)
+        ));
+
+        assert!(matches!(
+            account.debit_chargeback(&Decimal::from(10)),
+            Ok(_)
+        ));
+
+        assert_eq!(account.held, Decimal::from(10));
+        assert_eq!(account.available(), Decimal::ZERO);
+        assert_eq!(account.total, Decimal::from(-10));
+        assert!(account.locked);
     }
 }
