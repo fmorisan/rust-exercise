@@ -14,7 +14,6 @@ pub struct Account {
 pub enum AccountOperationError {
     AccountLocked,
     BalanceInsufficient,
-    InvariantViolation
 }
 
 impl Account {

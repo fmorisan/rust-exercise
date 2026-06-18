@@ -46,10 +46,12 @@ impl AccountState {
         (&self.accounts).into_iter()
     }
 
+    #[cfg(test)]
     pub fn get_account(&self, client: u16) -> Option<&Account> {
         self.accounts.get(&client)
     }
 
+    #[cfg(test)]
     pub fn get_transaction(&self, id: u32) -> Option<&Transaction> {
         self.ledger.get(&id)
     }

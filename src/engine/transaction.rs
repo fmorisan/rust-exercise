@@ -34,6 +34,7 @@ impl Transaction {
         &self.tx
     }
 
+    #[cfg(test)]
     pub fn state(&self) -> &TransactionState {
         &self.state
     }
