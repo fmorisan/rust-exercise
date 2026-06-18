@@ -81,9 +81,10 @@ impl AccountState {
                             if client != d_client {
                                 return Err(TransactionOperationError::InvalidDispute);
                             } else {
-                                let account = self.accounts.get_mut(client).unwrap();
-                                account.hold_amount(amount)?;
+                                let amt = amount.clone();
                                 disputed.dispute()?;
+                                let account = self.accounts.get_mut(client).unwrap();
+                                account.hold_amount(&amt)?;
                             }
                         },
                         _ => {
@@ -100,9 +101,10 @@ impl AccountState {
                             if client != d_client {
                                 return Err(TransactionOperationError::InvalidDispute);
                             } else {
-                                let account = self.accounts.get_mut(client).unwrap();
-                                account.release_amount(amount)?;
+                                let amt = amount.clone();
                                 disputed.resolve()?;
+                                let account = self.accounts.get_mut(client).unwrap();
+                                account.release_amount(&amt)?;
                             }
                         },
                         _ => {
@@ -119,11 +121,12 @@ impl AccountState {
                             if client != d_client {
                                 return Err(TransactionOperationError::InvalidDispute);
                             } else {
-                                let account = self.accounts.get_mut(client).unwrap();
-                                account.release_amount(amount)?;
-                                account.debit_amount(amount)?;
-                                account.lock()?;
+                                let amt = amount.clone();
                                 disputed.chargeback()?;
+                                let account = self.accounts.get_mut(client).unwrap();
+                                account.release_amount(&amt)?;
+                                account.debit_amount(&amt)?;
+                                account.lock()?;
                             }
                         },
                         _ => {
