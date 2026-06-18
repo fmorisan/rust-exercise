@@ -150,7 +150,7 @@ impl AccountState {
 
 #[cfg(test)]
 mod test {
-    use rust_decimal::Decimal;
+    use decimal_rs::Decimal;
     use std::assert_matches;
 
     use crate::engine::transaction::TransactionState;

@@ -82,7 +82,7 @@ impl Transaction {
 mod test {
     use super::*;
     use crate::format::transaction::ParsedTransaction;
-    use rust_decimal::Decimal;
+    use decimal_rs::Decimal;
 
     fn make_deposit_tx(client: u16, id: u32, amount: Decimal) -> Transaction {
         Transaction::from(ParsedTransaction::Deposit { client, id, amount })

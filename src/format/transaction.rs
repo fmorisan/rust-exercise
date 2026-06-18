@@ -1,4 +1,4 @@
-use rust_decimal::Decimal;
+use decimal_rs::Decimal;
 use serde::{Deserialize};
 
 #[derive(Debug)]
