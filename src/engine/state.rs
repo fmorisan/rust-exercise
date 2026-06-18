@@ -14,6 +14,7 @@ pub struct AccountState {
 
 #[derive(Debug)]
 pub enum TransactionOperationError {
+    DuplicateTransaction,
     InvalidTransaction,
     InvalidDispute,
     InvalidChargeback,
@@ -56,12 +57,18 @@ impl AccountState {
     pub fn apply_transaction(&mut self, tx: Transaction) -> Result<(), TransactionOperationError> {
         match tx.transaction() {
             ParsedTransaction::Deposit { client, id, amount } => {
+                if let Some(_) = self.ledger.get(id) {
+                    return Err(TransactionOperationError::DuplicateTransaction);
+                }
                 let account = self.get_or_insert_account(*client);
                 account.credit_amount(amount)?;
                 self.ledger.insert(*id, tx);
                 return Ok(());
             },
             ParsedTransaction::Withdrawal { client, id, amount } => {
+                if let Some(_) = self.ledger.get(id) {
+                    return Err(TransactionOperationError::DuplicateTransaction);
+                }
                 let account = self.get_or_insert_account(*client);
                 account.debit_amount(amount)?;
                 self.ledger.insert(*id, tx);
