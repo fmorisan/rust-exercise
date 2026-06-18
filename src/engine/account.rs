@@ -19,7 +19,7 @@ pub enum AccountOperationError {
 impl Account {
     /// Funds readily available to the account
     pub fn available(&self) -> Decimal {
-        self.total.checked_sub(self.held).unwrap()
+        self.total.checked_sub(self.held).unwrap().max(Decimal::ZERO)
     }
 
     pub fn total(&self) -> Decimal {
@@ -63,10 +63,6 @@ impl Account {
     pub fn hold_amount(&mut self, amount: &Decimal) -> Result<(), AccountOperationError> {
         if self.locked {
             Err(AccountOperationError::AccountLocked)
-        } else if amount.gt(&self.available()) {
-            // TODO: change this behaviour. what if 1.deposit(100), 2.withdraw(20), then
-            // dispute(1)?
-            Err(AccountOperationError::BalanceInsufficient)
         } else {
             self.held = self.held.checked_add(*amount).unwrap();
             Ok(())
@@ -237,17 +233,19 @@ mod test {
     }
 
     #[test]
-    fn hold_with_insufficient_available_fails() {
+    fn hold_with_insufficient_available_succeeds() {
         let mut account = default_account();
         account.total = Decimal::from(50);
         account.held = Decimal::from(30);
         assert_eq!(account.available(), Decimal::from(20));
         assert_eq!(
             account.hold_amount(&Decimal::from(25)),
-            Err(AccountOperationError::BalanceInsufficient)
+            Ok(())
         );
-        assert_eq!(account.held, Decimal::from(30));
+        assert_eq!(account.held, Decimal::from(55));
+        assert_eq!(account.available(), Decimal::ZERO);
     }
+
 
     #[test]
     fn hold_on_locked_account_fails() {
