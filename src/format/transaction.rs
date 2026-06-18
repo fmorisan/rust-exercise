@@ -78,3 +78,107 @@ impl TryFrom<TransactionRow> for ParsedTransaction {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_deposit() {
+        assert!(matches!(
+            ParsedTransaction::try_from(
+                TransactionRow {
+                    kind: TransactionKind::Deposit,
+                    amount: Some(Decimal::ONE),
+                    client: 1,
+                    id: 1
+                }
+            ),
+            Ok(ParsedTransaction::Deposit { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_deposit_no_amount_fails() {
+        assert!(ParsedTransaction::try_from(
+            TransactionRow {
+                kind: TransactionKind::Deposit,
+                amount: None,
+                client: 1,
+                id: 1
+            }
+        ).is_err());
+    }
+
+    #[test]
+    fn parse_withdraw() {
+        assert!(matches!(
+            ParsedTransaction::try_from(
+                TransactionRow {
+                    kind: TransactionKind::Withdrawal,
+                    amount: Some(Decimal::ONE),
+                    client: 1,
+                    id: 1
+                }
+            ),
+            Ok(ParsedTransaction::Withdrawal { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_withdraw_no_amount_fails() {
+        assert!(ParsedTransaction::try_from(
+            TransactionRow {
+                kind: TransactionKind::Deposit,
+                amount: None,
+                client: 1,
+                id: 1
+            }
+        ).is_err());
+    }
+
+    #[test]
+    fn parse_dispute() {
+        assert!(matches!(
+            ParsedTransaction::try_from(
+                TransactionRow {
+                    kind: TransactionKind::Dispute,
+                    amount: None,
+                    client: 1,
+                    id: 1
+                }
+            ),
+            Ok(ParsedTransaction::Dispute { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_resolve() {
+        assert!(matches!(
+            ParsedTransaction::try_from(
+                TransactionRow {
+                    kind: TransactionKind::Resolve,
+                    amount: None,
+                    client: 1,
+                    id: 1
+                }
+            ),
+            Ok(ParsedTransaction::Resolve { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_chargeback() {
+        assert!(matches!(
+            ParsedTransaction::try_from(
+                TransactionRow {
+                    kind: TransactionKind::Chargeback,
+                    amount: None,
+                    client: 1,
+                    id: 1
+                }
+            ),
+            Ok(ParsedTransaction::Chargeback { .. })
+        ));
+    }
+}
