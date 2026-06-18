@@ -12,6 +12,12 @@ $ cargo run -- your_file.csv > output.csv
 1. Transaction objects are fed into the transaction engine one at a time in the same order they appear in the CSV (per spec, we can assume these happen chronologically)
 1. Once all transactions are passed through the system, we extract the accounts from the engine and build report structs for each one (since the output format is not the same as the internal representation)
 
+### Libraries used
+* `serde` for serialization/deserialization
+* `csv` for CSV formatting with `serde`
+* `decimal_rs` for fixed-precision decimal math
+* `clap` for command-line argument handling
+
 ### Engine internals
 * The engine stores accounts in a BTreeMap so that account ordering at output time is stable.
 * Account reporting and extraction happens through an iterator so we don't have to do the whole chunk at once.
