@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, btree_map::Iter};
 
 use crate::{engine::{
     account::{Account, AccountOperationError},
@@ -40,6 +40,10 @@ impl AccountState {
             accounts: BTreeMap::new(),
             ledger: HashMap::new()
         }
+    }
+
+    pub fn all_accounts<'a>(&'a self) -> Iter<'a, u16, Account> {
+        (&self.accounts).into_iter()
     }
 
     pub fn get_account(&self, client: u16) -> Option<&Account> {

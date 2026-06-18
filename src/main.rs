@@ -1,11 +1,13 @@
 mod format;
 mod engine;
 
-use std::{path::PathBuf};
+use std::{io::{LineWriter, stdout}, path::PathBuf};
 use clap::Parser;
 
 use crate::{
-    engine::{state::AccountState, transaction::Transaction},
+    engine::transaction::Transaction,
+    engine::state::AccountState,
+    format::account::Account as FormatAccount,
     format::transaction::{ParsedTransaction, TransactionRow}
 };
 
@@ -23,12 +25,17 @@ fn main() {
         .map(|tx| Transaction::from(tx))
         .collect();
 
-    eprintln!("{:?}", transactions);
-
     let mut state = AccountState::new();
 
     for tx in transactions {
         // Discarding errors for now...
         let _ = state.apply_transaction(tx);
+    }
+
+    let mut writer = csv::Writer::from_writer(LineWriter::new(stdout()));
+
+    for (uid, account) in state.all_accounts() {
+        let record = FormatAccount::from_engine(*uid, account);
+        let _ = writer.serialize(record);
     }
 }

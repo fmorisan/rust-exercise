@@ -23,6 +23,14 @@ impl Account {
         self.total.checked_sub(self.held).unwrap()
     }
 
+    pub fn total(&self) -> Decimal {
+        self.total
+    }
+
+    pub fn held(&self) -> Decimal {
+        self.held
+    }
+
     pub fn locked(&self) -> bool {
         self.locked
     }
